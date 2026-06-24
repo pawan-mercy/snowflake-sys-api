@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+
+    <!--
+        PAY-001 Snowflake System API - Global Error Handler
+
+        Purpose:
+        - Replace repeated local error handlers in snowflake-sys-api.
+        - Return the standard PAY-001 common error response:
+          status + meta + error.
+        - Align with common-types.raml:
+          common.Status, common.Meta, common.ErrorResponse.
+        - Map Snowflake source failures to standard PAY-001 error types.
+
+        System API context:
+        - GET /visits
+        - GET /control/visits
+
+        This API only queries Snowflake. It does not orchestrate payroll,
+        move watermarks, set PENDING/SUCCESS/FAILED, or call Dayforce.
+
+        Usage:
+        1. Place this file in:
+           src/main/mule/common/pay001-snowflake-global-error-handler.xml
+
+        2. Reference from APIKit/main flow:
+           <error-handler ref="pay001-snowflake-global-error-handler"/>
+
+        3. Remove duplicated local error handlers unless a flow has a truly
+           flow-specific exception path.
+
+        Notes:
+        - This handler intentionally avoids uncertain connector-specific
+          SNOWFLAKE:* error types so it remains safe across Snowflake Connector
+          versions.
+        - Snowflake Connector SELECT failures normally surface through Mule
+          connectivity, timeout, retry, expression/transformation, or ANY paths.
+    -->
+
+    <error-handler name="pay001-snowflake-global-error-handler"
+                   doc:name="PAY-001 Snowflake Global Error Handler">
+
+        <!-- ===================================================== -->
+        <!-- APIKIT request/contract errors                        -->
+        <!-- ===================================================== -->
+
+        <on-error-propagate type="APIKIT:BAD_REQUEST" doc:name="APIKIT Bad Request - 400">
+            <set-variable variableName="httpStatus" value="400"/>
+            <set-variable variableName="statusCode" value="VALIDATION_ERROR"/>
+            <set-variable variableName="errorTypeValue" value="DATA_VALIDATION"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-APIKIT-400"/>
+            <set-variable variableName="failureStage" value="REQUEST_VALIDATION"/>
+            <set-variable variableName="retryable" value="false"/>
+            <set-variable variableName="errorMessageValue" value="Bad request. Request does not match the PAY-001 Snowflake System API contract."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <on-error-propagate type="APIKIT:NOT_FOUND" doc:name="APIKIT Not Found - 404">
+            <set-variable variableName="httpStatus" value="404"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="DATA_VALIDATION"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-APIKIT-404"/>
+            <set-variable variableName="failureStage" value="REQUEST_ROUTING"/>
+            <set-variable variableName="retryable" value="false"/>
+            <set-variable variableName="errorMessageValue" value="Requested PAY-001 Snowflake System API resource was not found."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED" doc:name="APIKIT Method Not Allowed - 405">
+            <set-variable variableName="httpStatus" value="405"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="DATA_VALIDATION"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-APIKIT-405"/>
+            <set-variable variableName="failureStage" value="REQUEST_ROUTING"/>
+            <set-variable variableName="retryable" value="false"/>
+            <set-variable variableName="errorMessageValue" value="HTTP method is not allowed for the requested PAY-001 Snowflake System API resource."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <on-error-propagate type="APIKIT:NOT_ACCEPTABLE" doc:name="APIKIT Not Acceptable - 406">
+            <set-variable variableName="httpStatus" value="406"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="DATA_VALIDATION"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-APIKIT-406"/>
+            <set-variable variableName="failureStage" value="REQUEST_VALIDATION"/>
+            <set-variable variableName="retryable" value="false"/>
+            <set-variable variableName="errorMessageValue" value="Requested media type is not acceptable. Use application/json."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE" doc:name="APIKIT Unsupported Media Type - 415">
+            <set-variable variableName="httpStatus" value="415"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="DATA_VALIDATION"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-APIKIT-415"/>
+            <set-variable variableName="failureStage" value="REQUEST_VALIDATION"/>
+            <set-variable variableName="retryable" value="false"/>
+            <set-variable variableName="errorMessageValue" value="Unsupported media type. Use application/json."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <on-error-propagate type="APIKIT:NOT_IMPLEMENTED" doc:name="APIKIT Not Implemented - 501">
+            <set-variable variableName="httpStatus" value="501"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="SYSTEM_FAULT"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-APIKIT-501"/>
+            <set-variable variableName="failureStage" value="REQUEST_ROUTING"/>
+            <set-variable variableName="retryable" value="false"/>
+            <set-variable variableName="errorMessageValue" value="Requested operation is not implemented in PAY-001 Snowflake System API."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <!-- ===================================================== -->
+        <!-- Request validation errors                             -->
+        <!-- ===================================================== -->
+
+        <on-error-propagate type="VALIDATION:*" doc:name="Validation Error - 400">
+            <set-variable variableName="httpStatus" value="400"/>
+            <set-variable variableName="statusCode" value="VALIDATION_ERROR"/>
+            <set-variable variableName="errorTypeValue" value="DATA_VALIDATION"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-VALIDATION-400"/>
+            <set-variable variableName="failureStage" value="REQUEST_VALIDATION"/>
+            <set-variable variableName="retryable" value="false"/>
+            <set-variable variableName="errorMessageValue" value="Request validation failed in PAY-001 Snowflake System API."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <!-- ===================================================== -->
+        <!-- Snowflake / Mule connectivity and runtime errors       -->
+        <!-- ===================================================== -->
+
+        <on-error-propagate type="MULE:CONNECTIVITY" doc:name="Snowflake Connectivity Error - 503">
+            <set-variable variableName="httpStatus" value="503"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="CONNECTIVITY_FAULT"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-CONNECTIVITY-503"/>
+            <set-variable variableName="failureStage" value="SNOWFLAKE_SOURCE_CONNECTION"/>
+            <set-variable variableName="retryable" value="true"/>
+            <set-variable variableName="errorMessageValue" value="Connectivity failure while connecting to Snowflake."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <on-error-propagate type="MULE:TIMEOUT" doc:name="Snowflake Timeout Error - 504">
+            <set-variable variableName="httpStatus" value="504"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="RETRYABLE_SYSTEM_FAULT"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-TIMEOUT-504"/>
+            <set-variable variableName="failureStage" value="SNOWFLAKE_SOURCE_QUERY_TIMEOUT"/>
+            <set-variable variableName="retryable" value="true"/>
+            <set-variable variableName="errorMessageValue" value="Snowflake query or connection timed out."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <on-error-propagate type="MULE:RETRY_EXHAUSTED" doc:name="Snowflake Retry Exhausted - 503">
+            <set-variable variableName="httpStatus" value="503"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="RETRYABLE_SYSTEM_FAULT"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-RETRY-503"/>
+            <set-variable variableName="failureStage" value="SNOWFLAKE_RETRY_EXHAUSTED"/>
+            <set-variable variableName="retryable" value="true"/>
+            <set-variable variableName="errorMessageValue" value="Retry attempts exhausted while connecting to or querying Snowflake."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <on-error-propagate type="MULE:EXPRESSION" doc:name="Mule Expression Error - 500">
+            <set-variable variableName="httpStatus" value="500"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="SYSTEM_FAULT"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-EXPRESSION-500"/>
+            <set-variable variableName="failureStage" value="MULE_EXPRESSION"/>
+            <set-variable variableName="retryable" value="false"/>
+            <set-variable variableName="errorMessageValue" value="Mule expression evaluation failed in PAY-001 Snowflake System API."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <on-error-propagate type="MULE:TRANSFORMATION" doc:name="Mule Transformation Error - 500">
+            <set-variable variableName="httpStatus" value="500"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="TRANSFORMATION_FAULT"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-TRANSFORMATION-500"/>
+            <set-variable variableName="failureStage" value="TRANSFORMATION"/>
+            <set-variable variableName="retryable" value="false"/>
+            <set-variable variableName="errorMessageValue" value="Transformation failed in PAY-001 Snowflake System API."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <on-error-propagate type="MULE:SECURITY" doc:name="Mule Security Error - 403">
+            <set-variable variableName="httpStatus" value="403"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="SECURITY_FAULT"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-SECURITY-403"/>
+            <set-variable variableName="failureStage" value="SECURITY"/>
+            <set-variable variableName="retryable" value="false"/>
+            <set-variable variableName="errorMessageValue" value="Security failure in PAY-001 Snowflake System API."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+        <!-- ===================================================== -->
+        <!-- Catch-all                                             -->
+        <!-- ===================================================== -->
+
+        <on-error-propagate type="ANY" doc:name="Catch All Errors - 500">
+            <set-variable variableName="httpStatus" value="500"/>
+            <set-variable variableName="statusCode" value="ERROR"/>
+            <set-variable variableName="errorTypeValue" value="SOURCE_SYSTEM_FAULT"/>
+            <set-variable variableName="errorCodeValue" value="PAY001-SNOWFLAKE-UNKNOWN-500"/>
+            <set-variable variableName="failureStage" value="SNOWFLAKE_SOURCE_READ"/>
+            <set-variable variableName="retryable" value="true"/>
+            <set-variable variableName="errorMessageValue" value="Unexpected error occurred while retrieving data from Snowflake."/>
+            <flow-ref name="pay001-snowflake-error-response-builder"/>
+        </on-error-propagate>
+
+    </error-handler>
+
+    <!-- ========================================================= -->
+    <!-- Common PAY-001 Snowflake error response builder           -->
+    <!-- ========================================================= -->
+
+    <sub-flow name="pay001-snowflake-error-response-builder"
+              doc:name="PAY-001 Snowflake Error Response Builder">
+
+        <!-- If the downstream payload already follows common.ErrorResponse, return it as-is. -->
+        <ee:transform doc:name="Detect Existing PAY-001 Common Error">
+            <ee:variables>
+                <ee:set-variable variableName="isCommonError"><![CDATA[%dw 2.0
+output application/java
+var p = error.errorMessage.payload default null
+---
+p is Object
+and p.status?
+and p.status.code?
+and p.status.httpStatus?
+and p.status.message?
+and p.meta?
+and p.meta.correlationId?
+and p.meta.interfaceId?
+and p.error?
+and p.error.errorId?
+and p.error.errorType?
+and p.error.errorCode?
+and p.error.errorMessage?]]></ee:set-variable>
+
+                <ee:set-variable variableName="safeErrorMessage"><![CDATA[%dw 2.0
+output application/java
+---
+if (vars.errorMessageValue? and vars.errorMessageValue != null)
+  vars.errorMessageValue
+else
+  error.description default "Unexpected error occurred in PAY-001 Snowflake System API"]]></ee:set-variable>
+
+                <ee:set-variable variableName="safeErrorDetails"><![CDATA[%dw 2.0
+output application/java
+var p = error.errorMessage.payload default null
+---
+if (p == null)
+  error.description default null
+else if (p is String)
+  p
+else
+  write(p, "application/json")]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+
+        <logger level="ERROR"
+                doc:name="Log PAY-001 Snowflake Error"
+                message="#[write({
+                  correlationId: vars.correlationId default null,
+                  interfaceId: vars.interfaceId default 'PAY-001',
+                  httpStatus: vars.httpStatus default 500,
+                  errorCode: vars.errorCodeValue default null,
+                  errorType: vars.errorTypeValue default null,
+                  failureStage: vars.failureStage default null,
+                  retryable: vars.retryable default false,
+                  flowName: flow.name default null,
+                  requestPath: attributes.requestPath default null,
+                  muleErrorType: error.errorType.identifier default null,
+                  muleErrorDescription: error.description default null
+                }, 'application/json')]"/>
+
+        <choice doc:name="Return Existing Error Or Build Standard Error">
+            <when expression="#[vars.isCommonError]">
+                <ee:transform doc:name="Return Existing Common Error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+error.errorMessage.payload]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </when>
+
+            <otherwise>
+                <ee:transform doc:name="Build PAY-001 Common Error Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var httpStatusValue = (vars.httpStatus default 500) as Number
+var requestPathValue = attributes.requestPath default attributes.rawRequestPath default ""
+var requestMethodValue = attributes.method default ""
+var resource =
+  if ((requestPathValue as String) contains "control/visits") "CONTROL_VISITS"
+  else if ((requestPathValue as String) contains "visits") "VISITS"
+  else if ((requestPathValue as String) contains "health") "HEALTH"
+  else "SNOWFLAKE"
+var requestingApiValue =
+  "pay001-snowflake-sys-api/" ++
+  upper(requestMethodValue as String) ++
+  " " ++
+  (requestPathValue as String)
+---
+{
+  status: {
+    code: vars.statusCode default "ERROR",
+    httpStatus: httpStatusValue,
+    message: vars.safeErrorMessage
+  },
+  meta: {
+    correlationId: vars.correlationId default (attributes.headers.'x-correlation-id' default attributes.headers.'X-Correlation-ID' default uuid()),
+    interfaceId: vars.interfaceId default "PAY-001",
+    runId: vars.runId default null,
+    businessContext: vars.businessContext default ("resource=" ++ resource),
+    dateTimeStamp: now(),
+    originatingSystem: "MuleSoft",
+    targetSystem: "Snowflake",
+    requestingAPI: vars.requestingAPI default requestingApiValue,
+    responseAPIorSystem: vars.responseAPIorSystem default "Snowflake",
+    muleEnvironment: vars.muleEnvironment default (p('mule.env') default "DEV")
+  },
+  error: {
+    errorId: "ERR-PAY001-" ++ (now() as String {format: "yyyyMMddHHmmssSSS"}),
+    interfaceId: vars.interfaceId default "PAY-001",
+    errorType: vars.errorTypeValue default "SOURCE_SYSTEM_FAULT",
+    errorCode: vars.errorCodeValue default "PAY001-SNOWFLAKE-UNKNOWN-500",
+    errorMessage: vars.safeErrorMessage,
+    failureStage: vars.failureStage default "SNOWFLAKE_SOURCE_READ",
+    retryable: (vars.retryable default false) as Boolean,
+    muleApplication: p('application.name') default "pay001-snowflake-sys-api",
+    flowName: flow.name default null,
+    sourceSystem: "Snowflake",
+    targetSystem: "MuleSoft",
+    businessContext: vars.businessContext default ("resource=" ++ resource),
+    additionalDetails: vars.safeErrorDetails,
+    validationErrors:
+      if (httpStatusValue == 400)
+        [
+          {
+            field: vars.validationField default "request",
+            value: vars.validationValue default null,
+            rule: vars.validationRule default "REQUEST_VALIDATION",
+            message: vars.safeErrorMessage
+          }
+        ]
+      else
+        null
+  }
+}
+]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+            </otherwise>
+        </choice>
+
+        <set-variable variableName="httpStatus"
+                      value="#[vars.httpStatus default 500]"
+                      doc:name="Set HTTP Status For APIKit"/>
+
+    </sub-flow>
+
+</mule>

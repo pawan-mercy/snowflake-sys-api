@@ -1,0 +1,46 @@
+env: "DEV"
+
+api:
+  base:
+    path: "/api/sys/snowflake/pay001/v1"
+  control:
+    default:
+      source:
+        system: "Sandwai API"
+
+http:
+  host: "0.0.0.0"
+  port: "8081"
+
+snowflake:
+  account: "A8592326672571-MERCYCARE"
+  user: "SVC_DEV_INTEGRATION_USER"
+  db: "DEV_INTEGRATION"
+  schema: "SANDWAI"
+  warehouse: "DEV_INTEGRATION_WH"
+  role: "DEV_INTEGRATION_CONSUMER_ROLE"
+  key:
+   path: "${app.home}/snowflakeKeys/rsa_key_${mule.env}.p8"
+  sys:
+     fetch:
+      limit: "10000"
+  table:
+    visits: "VISITS"
+    employees: "EMPLOYEES"
+    api:
+      control: "API_CONTROL"
+  jdbc:
+    # Key-pair authentication via Snowflake JDBC URL. Private key file path and password are secure properties.
+    url: "jdbc:snowflake://A8592326672571-MERCYCARE.snowflakecomputing.com/?warehouse=DEV_INTEGRATION_WH&db=DEV_INTEGRATION&schema=SANDWAI&role=DEV_INTEGRATION_CONSUMER_ROLE&authenticator=SNOWFLAKE_JWT&private_key_file=${secure::snowflake.private.key.file}&private_key_file_pwd=${secure::snowflake.private.key.passphrase}"
+
+query:
+  default:
+    limit: "1000"
+  payroll:
+    limit: "10000"
+
+json:
+ logger:
+   application:
+     name: Snowflake Sys API
+     version: v1

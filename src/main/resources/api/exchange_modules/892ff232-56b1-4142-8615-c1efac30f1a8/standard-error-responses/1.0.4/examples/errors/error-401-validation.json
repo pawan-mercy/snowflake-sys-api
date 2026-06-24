@@ -1,0 +1,34 @@
+{
+  "status": {
+    "code": "ERROR",
+    "httpStatus": 401,
+    "message": "Authentication failed for PAY-001 Snowflake System API"
+  },
+  "meta": {
+    "correlationId": "9c1fbb17-dab5-4f8c-9f3e-20c41d06c111",
+    "interfaceId": "PAY-001",
+    "runId": "PAY001-PAY-20260515-001",
+    "businessContext": "Fortnightly payroll request",
+    "dateTimeStamp": "2026-05-15T18:00:00+08:00",
+    "originatingSystem": "MuleSoft",
+    "targetSystem": "Snowflake",
+    "requestingAPI": "pay001-snowflake-sys-api/GET /timesheets/payroll",
+    "responseAPIorSystem": "API Manager",
+    "muleEnvironment": "UAT"
+  },
+  "error": {
+    "errorId": "ERR-PAY001-20260515-0401",
+    "interfaceId": "PAY-001",
+    "errorType": "SECURITY_FAULT",
+    "errorCode": "PAY001-AUTH-401",
+    "errorMessage": "Missing or invalid authentication credentials",
+    "failureStage": "AUTHENTICATION",
+    "retryable": false,
+    "muleApplication": "pay001-snowflake-sys-api",
+    "flowName": "api-main",
+    "sourceSystem": "MuleSoft",
+    "targetSystem": "Snowflake",
+    "additionalDetails": "Check client credentials, API Manager policy configuration, and calling application access.",
+    "validationErrors": []
+  }
+}

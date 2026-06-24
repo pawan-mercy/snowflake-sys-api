@@ -1,0 +1,41 @@
+{
+  "status": {
+    "code": "ERROR",
+    "httpStatus": 409,
+    "message": "PAY-001 business validation conflict"
+  },
+  "meta": {
+    "correlationId": "18e77db0-5f5d-4c89-bc7b-cbc33c1b9b41",
+    "interfaceId": "PAY-001",
+    "runId": "PAY001-PAY-20260515-001",
+    "businessContext": "Fortnightly payroll processing",
+    "dateTimeStamp": "2026-05-15T18:12:45+08:00",
+    "originatingSystem": "MuleSoft",
+    "targetSystem": "Snowflake",
+    "requestingAPI": "pay001-snowflake-sys-api/GET /timesheets/payroll",
+    "responseAPIorSystem": "MuleSoft",
+    "muleEnvironment": "UAT"
+  },
+  "error": {
+    "errorId": "ERR-PAY001-20260515-0409",
+    "interfaceId": "PAY-001",
+    "errorType": "BUSINESS_FAULT",
+    "errorCode": "PAY001-DATA-409",
+    "errorMessage": "Duplicate or conflicting timesheet record detected",
+    "failureStage": "SOURCE_DATA_VALIDATION",
+    "retryable": false,
+    "muleApplication": "pay001-snowflake-sys-api",
+    "flowName": "get-timesheets-payroll-flow",
+    "sourceSystem": "Snowflake",
+    "targetSystem": "MuleSoft",
+    "additionalDetails": "Duplicate business key detected for employee 55140, sourceRecordId 258429, route EMPLOYEE_SCHEDULE. Record will not be sent to Dayforce until reviewed.",
+    "validationErrors": [
+      {
+        "field": "businessKey",
+        "value": "258429|55140|2026-01-02T11:06:00|2026-01-02T13:21:00|EMPLOYEE_SCHEDULE",
+        "rule": "DUPLICATE_BUSINESS_KEY",
+        "message": "A matching payroll record has already been processed or is present more than once in the source dataset"
+      }
+    ]
+  }
+}

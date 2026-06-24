@@ -1,0 +1,133 @@
+#%RAML 1.0
+title: PAY-001 Snowflake System API
+version: v1
+baseUri: https://api.mercycare.com.au/pay001/snowflake/sys/{version}
+mediaType: application/json
+protocols: [ HTTPS ]
+
+description: |
+  Snowflake System API for PAY-001. This API retrieves payroll-ready
+  timesheet records from Snowflake for daily validation, fortnightly
+  payroll processing and manual reconciliation.
+
+uses:
+  common: exchange_modules/892ff232-56b1-4142-8615-c1efac30f1a8/common-types/1.0.0/common-types.raml
+  snowflake: exchange_modules/892ff232-56b1-4142-8615-c1efac30f1a8/snowflake-types/1.0.1/snowflake-types.raml
+  
+traits:
+  correlationId: !include exchange_modules/892ff232-56b1-4142-8615-c1efac30f1a8/correlation-id/1.0.1/correlation-id.raml
+  standardErrors: !include exchange_modules/892ff232-56b1-4142-8615-c1efac30f1a8/standard-error-responses/1.0.4/standard-error-responses.raml
+
+
+/health:
+  get:
+    is: [ correlationId, standardErrors ]
+    displayName: Health Check
+    description: |
+      Health check for the PAY-001 Snowflake System API.
+    responses:
+      200:
+        body:
+          application/json:
+            type: snowflake.HealthResponse
+            example: !include examples/health-200.json
+
+/control:
+  /visits:
+    get:
+      is: [ correlationId, standardErrors ]
+      displayName: Get Visits Control Status
+      description: |
+        Retrieves the control-table row for the PAY-001 visits endpoint.
+
+        This operation exposes the current control metadata for:
+        - sourceName = SANDWAI
+        - endpoint = visits
+        - deltaKey = lastupdated
+
+        The response may show lastRunStatus as PENDING, SUCCESS or FAILED.
+
+        This API only reports the control status. It does not decide whether a
+        new run should proceed. That decision belongs to the PAY-001 Process API.
+      responses:
+        200:
+          body:
+            application/json:
+              type: snowflake.VisitsControlResponse
+              example: !include examples/visits-control-200.json
+
+/visits:
+  get:
+    is: [ correlationId, standardErrors ]
+    displayName: Get Visits
+    description: |
+      Retrieves visit records from Snowflake using a bounded LAST_UPDATED window.
+
+      This endpoint is intended to be called by the PAY-001 Process API after
+      it has determined the correct fetch window.
+
+      The System API applies only technical query filters:
+      - fromLastUpdated
+      - toLastUpdated
+      - limit
+
+      This operation does not:
+      - check whether a run is PENDING
+      - update the control table
+      - move the watermark
+      - classify payroll records
+      - validate Dayforce business rules
+      - call Dayforce
+    queryParameters:
+      fromLastUpdated:
+        type: datetime
+        format: rfc3339
+        required: false
+        description: |
+          Lower bound for incremental fetch. Records with LAST_UPDATED greater
+          than this timestamp will be returned.
+        example: "2026-05-26T00:00:00Z"
+
+      toLastUpdated:
+        type: datetime
+        format: rfc3339
+        required: false
+        description: |
+          Upper bound for incremental fetch. Records with LAST_UPDATED less than
+          or equal to this timestamp will be returned.
+        example: "2026-05-27T01:00:00Z"
+        
+      actualStart:
+        type: datetime
+        format: rfc3339
+        required: false
+        description: |
+          Lower bound for incremental fetch. Records with LAST_UPDATED greater
+          than this timestamp will be returned.
+        example: "2026-05-26T00:00:00Z"
+
+      actualEnd:
+        type: datetime
+        format: rfc3339
+        required: false
+        description: |
+          Upper bound for incremental fetch. Records with LAST_UPDATED less than
+          or equal to this timestamp will be returned.
+        example: "2026-05-27T01:00:00Z"
+
+      limit:
+        type: integer
+        required: false
+        minimum: 1
+        maximum: 5000
+        default: 1000
+        description: |
+          Maximum number of visit records to return.
+        example: 1000
+
+    responses:
+      200:
+        body:
+          application/json:
+            type: snowflake.VisitsResponse
+            example: !include examples/visits-200.json

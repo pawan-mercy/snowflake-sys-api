@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:snowflake="http://www.mulesoft.org/schema/mule/snowflake"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+        http://www.mulesoft.org/schema/mule/snowflake http://www.mulesoft.org/schema/mule/snowflake/current/mule-snowflake.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+
+    <!--
+        Implementation file for PAY-001 Snowflake System API.
+
+        Scope:
+        - GET /visits
+        - GET /control/visits
+
+        This file is intentionally read-only.
+        It does not:
+        - start scheduled jobs
+        - update PAYROLL_CONTROL
+        - set PENDING / SUCCESS / FAILED
+        - move watermarks
+        - call Dayforce
+        - classify payroll records
+        - apply PAY-001 business validation rules
+
+        Required global config:
+        - Snowflake_Config must be defined in common/globals.xml
+    -->
+
+
+    <!-- ========================================================= -->
+    <!-- GET /control/visits                                      -->
+    <!-- ========================================================= -->
+
+    <flow name="get-control-visits-flow" doc:id="0baf8dba-56d7-45fc-a959-6ad65323bfeb">
+
+        <flow-ref doc:name="Set Initial Variable" doc:id="8573c45a-3c3b-4792-87a9-39bdf68bd541" name="common-init"/>
+
+        <logger level="INFO"
+                doc:name="Log Control Visits Request"
+                message="#['PAY-001 Snowflake System API | GET /control/visits | correlationId='&#10;                    ++ vars.correlationId]"/>
+
+        <snowflake:select doc:name="Select Visits Control Row"
+                          config-ref="Snowflake_Config"
+                          target="controlRows"
+                          queryTimeout="30"
+                          fetchSize="1"
+                          maxRows="1">
+
+            <snowflake:sql><![CDATA[
+                SELECT
+                    SOURCE_NAME,
+                    ENDPOINT,
+                    DELTA_KEY,
+                    DELTA_VALUE,
+                    LAST_RUN_ID,
+                    LAST_RUN_STATUS,
+                    LAST_RUN_ROWS,
+                    LAST_RUN_TIME_UTC
+                FROM DEV_INTEGRATION.SANDWAI.API_CONTROL
+                WHERE SOURCE_NAME = 'SANDWAI'
+                  AND ENDPOINT = 'visits'
+                  AND DELTA_KEY = 'lastupdated'
+            ]]></snowflake:sql>
+
+        </snowflake:select>
+
+        <choice doc:name="Check Control Row Exists">
+
+            <when expression="#[isEmpty(vars.controlRows default [])]">
+
+                <set-variable variableName="httpStatus"
+                              value="404"
+                              doc:name="Set HTTP Status 404"/>
+
+                <ee:transform doc:name="Build Control Row Not Found Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  status: {
+    code: "ERROR",
+    httpStatus: 404,
+    message: "Visits control row not found in Snowflake"
+  },
+  meta: {
+    correlationId: vars.correlationId,
+    interfaceId: vars.interfaceId,
+    runId: null,
+    businessContext: "Read-only control status query for PAY-001 visits endpoint",
+    dateTimeStamp: now(),
+    originatingSystem: "MuleSoft",
+    targetSystem: "Snowflake",
+    requestingAPI: "pay001-snowflake-sys-api/GET /control/visits",
+    responseAPIorSystem: "Snowflake",
+    muleEnvironment: vars.muleEnvironment
+  },
+  error: {
+    errorId: "ERR-PAY001-" ++ ((now() as String {format: "yyyyMMddHHmmss"})) ++ "-CONTROL-NOT-FOUND",
+    interfaceId: vars.interfaceId,
+    errorType: "SOURCE_SYSTEM_FAULT",
+    errorCode: "PAY001-SNOWFLAKE-CONTROL-404",
+    errorMessage: "No control table row exists for SOURCE_NAME=SANDWAI, ENDPOINT=visits, DELTA_KEY=lastupdated",
+    failureStage: "SOURCE_QUERY",
+    retryable: false,
+    muleApplication: "pay001-snowflake-sys-api",
+    flowName: "get-control-visits-flow",
+    sourceSystem: "Snowflake",
+    targetSystem: "MuleSoft",
+    businessContext: "sourceName=SANDWAI;endpoint=visits;deltaKey=lastupdated",
+    additionalDetails: "Seed the PAYROLL_CONTROL table before enabling the PAY-001 Process API."
+  }
+}
+]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+
+            </when>
+
+            <otherwise>
+
+                <set-variable variableName="httpStatus"
+                              value="200"
+                              doc:name="Set HTTP Status 200"/>
+
+                <ee:transform doc:name="Map Visits Control Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var row = vars.controlRows[0]
+---
+{
+  status: {
+    code: "SUCCESS",
+    httpStatus: 200,
+    message: "Visits control row retrieved successfully from Snowflake"
+  },
+  meta: {
+    correlationId: vars.correlationId,
+    interfaceId: vars.interfaceId,
+    runId: row.LAST_RUN_ID default null,
+    businessContext: "Read-only control status query for PAY-001 visits endpoint",
+    dateTimeStamp: now(),
+    originatingSystem: "MuleSoft",
+    targetSystem: "Snowflake",
+    requestingAPI: "pay001-snowflake-sys-api/GET /control/visits",
+    responseAPIorSystem: "Snowflake",
+    muleEnvironment: vars.muleEnvironment
+  },
+  data: {
+    sourceName: row.SOURCE_NAME,
+    endpoint: row.ENDPOINT,
+    deltaKey: row.DELTA_KEY,
+    deltaValue: row.DELTA_VALUE,
+    lastRunId: row.LAST_RUN_ID default null,
+    lastRunStatus: row.LAST_RUN_STATUS,
+    isPending: upper((row.LAST_RUN_STATUS default "") as String) == "PENDING",
+    lastRunRows: row.LAST_RUN_ROWS default 0,
+    lastRunTimeUtc: row.LAST_RUN_TIME_UTC default null
+  }
+}
+]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+
+            </otherwise>
+
+        </choice>
+
+        <logger level="INFO"
+                doc:name="Log Control Visits Response"
+                message="#['PAY-001 Snowflake System API | GET /control/visits completed | correlationId='&#10;                    ++ vars.correlationId&#10;                    ++ ' | httpStatus='&#10;                    ++ (vars.httpStatus as String)]"/>
+		<error-handler ref="pay001-snowflake-global-error-handler" />
+
+    
+</flow>
+
+
+    <!-- ========================================================= -->
+    <!-- GET /visits                                               -->
+    <!-- ========================================================= -->
+
+    <flow name="get-visits-flow" doc:id="cea13221-5556-4651-9a19-f19c7bc38820">
+
+        <flow-ref doc:name="Set Initial Variable" doc:id="8b2b92bb-cf19-447b-a199-e67f0a0b4696" name="common-init" />
+
+        <ee:transform doc:name="Set Payroll Dates" doc:id="de27f1ed-5b60-4046-a776-eed7a60ef2ea" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="fromLastUpdated" ><![CDATA[attributes.queryParams.fromLastUpdated default null]]></ee:set-variable>
+				<ee:set-variable variableName="toLastUpdated" ><![CDATA[attributes.queryParams.toLastUpdated default null]]></ee:set-variable>
+				<ee:set-variable variableName="actualStart" ><![CDATA[attributes.queryParams.actualStart default null]]></ee:set-variable>
+				<ee:set-variable variableName="actualEnd" ><![CDATA[attributes.queryParams.actualEnd default null]]></ee:set-variable>
+				<ee:set-variable variableName="limitVal" ><![CDATA[attributes.queryParams.limitVal default 1000]]></ee:set-variable>
+			
+</ee:variables>
+		</ee:transform>
+		<logger level="INFO"
+                doc:name="Log Visits Request"
+                message="#['PAY-001 Snowflake System API | GET /visits | correlationId='&#10;                    ++ vars.correlationId&#10;                    ++ ' | fromLastUpdated='&#10;                    ++ ((vars.fromLastUpdated default '') as String)&#10;                    ++ ' | toLastUpdated='&#10;                    ++ ((vars.toLastUpdated default '') as String)&#10;                    ++ ' | limit='&#10;                    ++ ((vars.limit default '') as String )]"/>
+
+        <choice doc:name="Validate Visits Query Parameters">
+
+            <when expression="#[(isBlank(vars.fromLastUpdated) and isBlank(vars.toLastUpdated)) and&#10;(isBlank(vars.actualStart) and isBlank(vars.actualEnd))]">
+
+                <set-variable variableName="httpStatus"
+                              value="400"
+                              doc:name="Set HTTP Status 400"/>
+
+                <ee:transform doc:name="Build Missing Query Parameter Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  status: {
+    code: "VALIDATION_ERROR",
+    httpStatus: 400,
+    message: "(fromLastUpdated and toLastUpdated) or (actualStart or actualEnd) query parameters are required"
+  },
+  meta: {
+    correlationId: vars.correlationId,
+    interfaceId: vars.interfaceId,
+    runId: null,
+    businessContext: "Read-only Snowflake visits query for PAY-001",
+    dateTimeStamp: now(),
+    originatingSystem: "MuleSoft",
+    targetSystem: "Snowflake",
+    requestingAPI: "pay001-snowflake-sys-api/GET /visits",
+    responseAPIorSystem: "MuleSoft",
+    muleEnvironment: vars.muleEnvironment
+  },
+  error: {
+    errorId: "ERR-PAY001-" ++ ((now() as String {format: "yyyyMMddHHmmss"})) ++ "-VALIDATION",
+    interfaceId: vars.interfaceId,
+    errorType: "DATA_VALIDATION",
+    errorCode: "PAY001-SNOWFLAKE-400",
+    errorMessage: "Required query parameters are missing",
+    failureStage: "REQUEST_VALIDATION",
+    retryable: false,
+    muleApplication: "pay001-snowflake-sys-api",
+    flowName: "get-visits-flow",
+    sourceSystem: "MuleSoft",
+    targetSystem: "Snowflake",
+    businessContext: "fromLastUpdated=" ++ ((vars.fromLastUpdated default '') as String) ++ ";toLastUpdated=" ++ ((vars.toLastUpdated default '') as String),
+    additionalDetails: "Both fromLastUpdated and toLastUpdated must be provided in RFC3339 format.",
+    validationErrors: [
+      {
+        field: "fromLastUpdated",
+        value: (vars.fromLastUpdated default "") as String,
+        rule: "MANDATORY_FIELD",
+        message: "fromLastUpdated is required"
+      },
+      {
+        field: "toLastUpdated",
+        value: (vars.toLastUpdated default "") as String,
+        rule: "MANDATORY_FIELD",
+        message: "toLastUpdated is required"
+      }
+    ]
+  }
+}
+]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+
+            </when>
+
+            <when expression="#[(not isBlank(vars.fromLastUpdated) and not isBlank(vars.toLastUpdated))&#10;and&#10;(isBlank(vars.actualStart) and isBlank(vars.actualEnd))]">
+				<snowflake:select doc:name="Select Visits" doc:id="50654244-614d-4afa-98bd-ddd7bc801f4b" config-ref="Snowflake_Config" queryTimeout="120" fetchSize="500" target="visitsRows" >
+					<snowflake:sql ><![CDATA[
+                        SELECT
+                        	SCHEDULE_ID
+                            ACCEPT_DATE,
+                            ACTUAL_END,
+                            ACTUAL_START,
+                            CANCEL_REASON,
+                            CLIENT_RELATED_TRAVEL,
+                            EMPLOYEE_CUSTOM_ID,
+                            EMPLOYEE_FIRST_NAME,
+                            EMPLOYEE_ID,
+                            EMPLOYEE_LAST_NAME,
+                            EVENT_PAID_HOURS,
+                            EVENT_TYPE_CUSTOM_ID,
+                            LAST_UPDATED,
+                            RUN_ID,
+                            SCHEDULE_END,
+                            SCHEDULE_ID,
+                            SCHEDULE_START,
+                            SERVICE_NAME,
+                            STATUS,
+                            TRAVEL_DISTANCE,
+                            TRAVEL_DURATION
+                        FROM DEV_INTEGRATION.SANDWAI.VISITS -- or FROM VISITS
+  QUALIFY ROW_NUMBER() OVER (
+      PARTITION BY SCHEDULE_ID
+      ORDER BY LAST_UPDATED DESC NULLS LAST
+  ) = 1
+  AND LAST_UPDATED > TRY_TO_TIMESTAMP_NTZ(:fromLastUpdated)
+  AND LAST_UPDATED <= TRY_TO_TIMESTAMP_NTZ(:toLastUpdated)
+                    ]]></snowflake:sql>
+					<snowflake:input-parameters ><![CDATA[#[{
+                        fromLastUpdated: vars.fromLastUpdated,
+                        toLastUpdated: vars.toLastUpdated
+                    }]]]></snowflake:input-parameters>
+				</snowflake:select>
+				<set-variable value="200" doc:name="Set HTTP Status 20" doc:id="7ab9b988-c518-44e9-b552-aa41af1ce7a9" variableName="httpStatus" />
+				<ee:transform doc:name="Map Visits Response" doc:id="e30b3a71-1899-45dd-ba4f-3372c1ca2457" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var rows = vars.visitsRows default []
+---
+{
+  status: {
+    code: "SUCCESS",
+    httpStatus: 200,
+    message: "Visits retrieved successfully from Snowflake"
+  },
+  meta: {
+    correlationId: vars.correlationId,
+    interfaceId: vars.interfaceId,
+    runId: null,
+    businessContext: "Read-only Snowflake visits query for PAY-001",
+    dateTimeStamp: now(),
+    originatingSystem: "MuleSoft",
+    targetSystem: "Snowflake",
+    requestingAPI: "pay001-snowflake-sys-api/GET /visits",
+    responseAPIorSystem: "Snowflake",
+    muleEnvironment: vars.muleEnvironment
+  },
+  data: {
+    query: {
+      fromLastUpdated: vars.fromLastUpdated,
+      toLastUpdated: vars.toLastUpdated,
+      limit: vars.limit
+    },
+    rowCount: sizeOf(rows),
+    visits: rows map ((row) -> {
+      acceptDate: row.ACCEPT_DATE default null,
+      actualEnd: row.ACTUAL_END default null,
+      actualStart: row.ACTUAL_START default null,
+      cancelReason: row.CANCEL_REASON default null,
+      clientRelatedTravel: row.CLIENT_RELATED_TRAVEL default null,
+      employeeCustomId: row.EMPLOYEE_CUSTOM_ID,
+      employeeFirstName: row.EMPLOYEE_FIRST_NAME,
+      employeeId: row.EMPLOYEE_ID,
+      employeeLastName: row.EMPLOYEE_LAST_NAME,
+      eventPaidHours: row.EVENT_PAID_HOURS default null,
+      eventTypeCustomId: row.EVENT_TYPE_CUSTOM_ID,
+      lastUpdated: row.LAST_UPDATED,
+      sourceRunId: row.RUN_ID,
+      scheduleEnd: row.SCHEDULE_END default null,
+      scheduleId: row.SCHEDULE_ID,
+      scheduleStart: row.SCHEDULE_START default null,
+      serviceName: row.SERVICE_NAME default null,
+      status: row.STATUS,
+      travelDistance: row.TRAVEL_DISTANCE default null,
+      travelDuration: row.TRAVEL_DURATION default null
+    })
+  }
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression="#[(not isBlank(vars.actualStart) and not isBlank(vars.actualEnd))]">
+				<snowflake:select doc:name="Select Visits" config-ref="Snowflake_Config" target="visitsRows" queryTimeout="120" fetchSize="500">
+
+                    <snowflake:sql><![CDATA[
+                        SELECT
+                        	SCHEDULE_ID
+                            ACCEPT_DATE,
+                            ACTUAL_END,
+                            ACTUAL_START,
+                            CANCEL_REASON,
+                            CLIENT_RELATED_TRAVEL,
+                            EMPLOYEE_CUSTOM_ID,
+                            EMPLOYEE_FIRST_NAME,
+                            EMPLOYEE_ID,
+                            EMPLOYEE_LAST_NAME,
+                            EVENT_PAID_HOURS,
+                            EVENT_TYPE_CUSTOM_ID,
+                            LAST_UPDATED,
+                            RUN_ID,
+                            SCHEDULE_END,
+                            SCHEDULE_ID,
+                            SCHEDULE_START,
+                            SERVICE_NAME,
+                            STATUS,
+                            TRAVEL_DISTANCE,
+                            TRAVEL_DURATION
+                        FROM DEV_INTEGRATION.SANDWAI.VISITS -- or FROM VISITS
+  QUALIFY ROW_NUMBER() OVER (
+      PARTITION BY SCHEDULE_ID
+      ORDER BY LAST_UPDATED DESC NULLS LAST
+  ) = 1
+  AND ACTUAL_START >= TRY_TO_TIMESTAMP_NTZ(:actualStart)
+  AND ACTUAL_END <= TRY_TO_TIMESTAMP_NTZ(:actualEnd)
+                    ]]></snowflake:sql>
+
+                    <snowflake:input-parameters><![CDATA[#[{
+                        actualStart: vars.actualStart ,
+                        actualEnd: vars.actualEnd        }]]]></snowflake:input-parameters>
+
+                </snowflake:select>
+				<set-variable variableName="httpStatus" value="200" doc:name="Set HTTP Status 200" />
+				<ee:transform doc:name="Map Visits Response">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var rows = vars.visitsRows default []
+---
+{
+  status: {
+    code: "SUCCESS",
+    httpStatus: 200,
+    message: "Visits retrieved successfully from Snowflake"
+  },
+  meta: {
+    correlationId: vars.correlationId,
+    interfaceId: vars.interfaceId,
+    runId: null,
+    businessContext: "Read-only Snowflake visits query for PAY-001",
+    dateTimeStamp: now(),
+    originatingSystem: "MuleSoft",
+    targetSystem: "Snowflake",
+    requestingAPI: "pay001-snowflake-sys-api/GET /visits",
+    responseAPIorSystem: "Snowflake",
+    muleEnvironment: vars.muleEnvironment
+  },
+  data: {
+    query: {
+      fromLastUpdated: vars.fromLastUpdated,
+      toLastUpdated: vars.toLastUpdated,
+      limit: vars.limit
+    },
+    rowCount: sizeOf(rows),
+    visits: rows map ((row) -> {
+      acceptDate: row.ACCEPT_DATE default null,
+      actualEnd: row.ACTUAL_END default null,
+      actualStart: row.ACTUAL_START default null,
+      cancelReason: row.CANCEL_REASON default null,
+      clientRelatedTravel: row.CLIENT_RELATED_TRAVEL default null,
+      employeeCustomId: row.EMPLOYEE_CUSTOM_ID,
+      employeeFirstName: row.EMPLOYEE_FIRST_NAME,
+      employeeId: row.EMPLOYEE_ID,
+      employeeLastName: row.EMPLOYEE_LAST_NAME,
+      eventPaidHours: row.EVENT_PAID_HOURS default null,
+      eventTypeCustomId: row.EVENT_TYPE_CUSTOM_ID,
+      lastUpdated: row.LAST_UPDATED,
+      sourceRunId: row.RUN_ID,
+      scheduleEnd: row.SCHEDULE_END default null,
+      scheduleId: row.SCHEDULE_ID,
+      scheduleStart: row.SCHEDULE_START default null,
+      serviceName: row.SERVICE_NAME default null,
+      status: row.STATUS,
+      travelDistance: row.TRAVEL_DISTANCE default null,
+      travelDuration: row.TRAVEL_DURATION default null
+    })
+  }
+}
+]]></ee:set-payload>
+                    </ee:message>
+                </ee:transform>
+			</when>
+			<otherwise>
+				<logger level="INFO" doc:name="Logger" doc:id="1fad5472-f31d-4421-ba89-c4b4a26c20e8" message="Do Nothing."/>
+
+
+            </otherwise>
+
+        
+</choice>
+
+        <json-logger:logger doc:name="Log Visits Response" doc:id="3b19b9db-85e8-4904-b2f5-a82e3112d623" message='#["PAY-001 Snowflake System API- GET /visits completed "]' config-ref="JSON_Logger_Config">
+			<json-logger:content ><![CDATA[#[import modules::JSONLoggerModule output application/json ---
+{
+    "numberOfRecords": sizeOf(vars.visitsRows) default "NA"
+}]]]></json-logger:content>
+		</json-logger:logger>
+		<error-handler ref="pay001-snowflake-global-error-handler" />
+
+    
+</flow>
+
+</mule>

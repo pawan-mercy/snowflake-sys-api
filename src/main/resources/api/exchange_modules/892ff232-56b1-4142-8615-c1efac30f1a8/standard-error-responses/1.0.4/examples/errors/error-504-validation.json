@@ -1,0 +1,34 @@
+{
+  "status": {
+    "code": "ERROR",
+    "httpStatus": 504,
+    "message": "Snowflake source request timed out"
+  },
+  "meta": {
+    "correlationId": "e96f5421-2671-4b79-8e86-cab62d417241",
+    "interfaceId": "PAY-001",
+    "runId": "PAY001-PAY-20260515-001",
+    "businessContext": "Fortnightly payroll fetch from Snowflake",
+    "dateTimeStamp": "2026-05-15T18:05:30+08:00",
+    "originatingSystem": "MuleSoft",
+    "targetSystem": "Snowflake",
+    "requestingAPI": "pay001-snowflake-sys-api/GET /timesheets/payroll",
+    "responseAPIorSystem": "Snowflake",
+    "muleEnvironment": "PROD"
+  },
+  "error": {
+    "errorId": "ERR-PAY001-20260515-0504",
+    "interfaceId": "PAY-001",
+    "errorType": "RETRYABLE_SYSTEM_FAULT",
+    "errorCode": "PAY001-SNOWFLAKE-504",
+    "errorMessage": "Snowflake query timed out while retrieving PAY-001 payroll records",
+    "failureStage": "SOURCE_QUERY",
+    "retryable": true,
+    "muleApplication": "pay001-snowflake-sys-api",
+    "flowName": "get-timesheets-payroll-flow",
+    "sourceSystem": "Snowflake",
+    "targetSystem": "MuleSoft",
+    "additionalDetails": "Retry the request. If timeout continues, review query performance, warehouse size, result volume and query filters.",
+    "validationErrors": []
+  }
+}

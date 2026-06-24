@@ -1,0 +1,34 @@
+{
+  "status": {
+    "code": "ERROR",
+    "httpStatus": 500,
+    "message": "Internal error occurred in PAY-001 Snowflake System API"
+  },
+  "meta": {
+    "correlationId": "6fbf4c0b-b6e7-4d7b-88b2-0bd5a1b9fcb8",
+    "interfaceId": "PAY-001",
+    "runId": "PAY001-VAL-20260501-001",
+    "businessContext": "Daily validation response mapping",
+    "dateTimeStamp": "2026-05-01T06:07:30+08:00",
+    "originatingSystem": "MuleSoft",
+    "targetSystem": "Snowflake",
+    "requestingAPI": "pay001-snowflake-sys-api/GET /timesheets/validation",
+    "responseAPIorSystem": "MuleSoft",
+    "muleEnvironment": "UAT"
+  },
+  "error": {
+    "errorId": "ERR-PAY001-20260501-0500",
+    "interfaceId": "PAY-001",
+    "errorType": "SYSTEM_FAULT",
+    "errorCode": "PAY001-MULE-500",
+    "errorMessage": "Unexpected error occurred while mapping Snowflake response to PAY-001 response model",
+    "failureStage": "RESPONSE_MAPPING",
+    "retryable": false,
+    "muleApplication": "pay001-snowflake-sys-api",
+    "flowName": "map-timesheet-response-subflow",
+    "sourceSystem": "MuleSoft",
+    "targetSystem": "MuleSoft",
+    "additionalDetails": "Review Mule application logs using correlationId and runId.",
+    "validationErrors": []
+  }
+}

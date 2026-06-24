@@ -1,0 +1,190 @@
+#%RAML 1.0 Library
+
+types:
+
+  Status:
+    type: object
+    additionalProperties: false
+    properties:
+      code:
+        type: string
+        enum: [SUCCESS, ERROR, VALIDATION_ERROR, PARTIAL_SUCCESS]
+        example: SUCCESS
+      httpStatus:
+        type: integer
+        example: 200
+      message:
+        type: string
+        example: Timesheet records retrieved successfully from Snowflake
+
+  Meta:
+    type: object
+    additionalProperties: false
+    properties:
+      correlationId:
+        type: string
+        required: true
+        example: "9d72f3aa-7e10-4d5d-bcb4-1b32fa8d1012"
+      interfaceId:
+        type: string
+        required: true
+        example: "PAY-001"
+      runId:
+        type: string
+        required: false
+        example: "PAY001-VAL-20260501-001"
+      businessContext:
+        type: string
+        required: false
+        example: "Daily validation run for Snowflake timesheet data"
+      dateTimeStamp:
+        type: datetime
+        required: true
+        example: "2026-05-01T06:00:00+08:00"
+      originatingSystem:
+        type: string
+        required: true
+        example: "MuleSoft"
+      targetSystem:
+        type: string
+        required: true
+        example: "Snowflake"
+      requestingAPI:
+        type: string
+        required: true
+        example: "pay001-snowflake-sys-api/GET /timesheets/validation"
+      responseAPIorSystem:
+        type: string
+        required: true
+        example: "Snowflake"
+      muleEnvironment:
+        type: string
+        required: true
+        enum: [DEV, UAT, PROD]
+        example: "UAT"
+
+  ValidationError:
+    type: object
+    additionalProperties: false
+    properties:
+      field:
+        type: string
+        example: "employeeCustomId"
+      value:
+        type: string
+        required: false
+        example: ""
+      rule:
+        type: string
+        example: "MANDATORY_FIELD"
+      message:
+        type: string
+        example: "employeeCustomId is mandatory for PAY-001 processing"
+
+  ErrorDetail:
+    type: object
+    additionalProperties: false
+    properties:
+      errorId:
+        type: string
+        required: true
+        example: "ERR-PAY001-20260501-0001"
+      interfaceId:
+        type: string
+        required: true
+        example: "PAY-001"
+      errorType:
+        type: string
+        required: true
+        enum:
+          - DATA_VALIDATION
+          - BUSINESS_FAULT
+          - SYSTEM_FAULT
+          - SECURITY_FAULT
+          - SOURCE_SYSTEM_FAULT
+          - TARGET_SYSTEM_FAULT
+          - TRANSFORMATION_FAULT
+          - CONNECTIVITY_FAULT
+          - DUPLICATE_RECORD
+          - RETRYABLE_SYSTEM_FAULT
+          - OTHER
+        example: "SOURCE_SYSTEM_FAULT"
+      errorCode:
+        type: string
+        required: true
+        example: "PAY001-SNOWFLAKE-503"
+      errorMessage:
+        type: string
+        required: true
+        example: "Snowflake connection failed while retrieving PAY-001 timesheet records"
+      failureStage:
+        type: string
+        required: false
+        example: "SOURCE_CONNECTION"
+      retryable:
+        type: boolean
+        required: true
+        example: true
+      muleApplication:
+        type: string
+        required: true
+        example: "pay001-snowflake-sys-api"
+      flowName:
+        type: string
+        required: false
+        example: "get-timesheets-validation-flow"
+      sourceSystem:
+        type: string
+        required: true
+        example: "Snowflake"
+      targetSystem:
+        type: string
+        required: true
+        example: "MuleSoft"
+      businessContext:
+        type: string
+        required: false
+        example: "fromTimestamp=2026-05-01T00:00:00Z;toTimestamp=2026-05-02T00:00:00Z"
+      additionalDetails:
+        type: string
+        required: false
+        example: "Warehouse DEV_INTEGRATION_WH unavailable or service account authentication failed"
+      validationErrors:
+        type: ValidationError[]
+        required: false
+
+  ErrorResponse:
+    type: object
+    additionalProperties: false
+    properties:
+      status:
+        type: Status
+      meta:
+        type: Meta
+      error:
+        type: ErrorDetail
+
+  RunSummary:
+    type: object
+    additionalProperties: false
+    properties:
+      recordsReceived:
+        type: integer
+        example: 1250
+      recordsTransformed:
+        type: integer
+        example: 1248
+      recordsLoaded:
+        type: integer
+        required: false
+        example: 0
+      recordsSentToDayforce:
+        type: integer
+        required: false
+        example: 0
+      recordsFailed:
+        type: integer
+        example: 2
+      status:
+        type: string
+        example: "COMPLETED_WITH_EXCEPTIONS"

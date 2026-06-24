@@ -1,0 +1,24 @@
+{
+  "status": {
+    "code": "SUCCESS",
+    "httpStatus": 200,
+    "message": "Up and Running"
+  },
+  "meta": {
+    "correlationId": "9d72f3aa-7e10-4d5d-bcb4-1b32fa8d1012",
+    "interfaceId": "PAY-001",
+    "runId": "Test123",
+    "businessContext": "Read-only control status query for PAY-001 visits endpoint",
+    "dateTimeStamp": "2026-05-27T01:00:00+10:00",
+    "originatingSystem": "MuleSoft",
+    "targetSystem": "MuleSoft",
+    "requestingAPI": "pay001-snowflake-sys-api/GET /Health",
+    "responseAPIorSystem": "Mulesoft",
+    "muleEnvironment": "DEV"
+  },
+  "data": {
+    "apiName": "SANDWAI",
+    "apiStatus": "AVAILABLE",
+    "version": "lastupdated"
+  }
+}

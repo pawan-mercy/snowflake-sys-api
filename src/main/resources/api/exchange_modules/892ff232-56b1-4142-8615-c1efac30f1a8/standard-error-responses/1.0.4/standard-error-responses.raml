@@ -1,0 +1,68 @@
+#%RAML 1.0 Trait
+
+uses:
+  common: ../../common-types/1.0.1/common-types.raml
+
+responses:
+
+  400:
+    description: Bad request. Query parameter or request structure is invalid.
+    body:
+      application/json:
+        type: common.ErrorResponse
+        example: !include examples/errors/error-400-validation.json
+
+  401:
+    description: Authentication failed or credentials are missing.
+    body:
+      application/json:
+        type: common.ErrorResponse
+        example: !include examples/errors/error-401-validation.json
+
+  403:
+    description: Request authenticated but not authorised.
+    body:
+      application/json:
+        type: common.ErrorResponse
+        example: !include examples/errors/error-403-validation.json
+
+  404:
+    description: Requested resource was not found.
+    body:
+      application/json:
+        type: common.ErrorResponse
+        example: !include examples/errors/error-404-validation.json
+
+  409:
+    description: Business or data validation failed.
+    body:
+      application/json:
+        type: common.ErrorResponse
+        example: !include examples/errors/error-409-validation.json
+
+  429:
+    description: Too many requests or target system throttling.
+    body:
+      application/json:
+        type: common.ErrorResponse
+        example: !include examples/errors/error-400-validation.json
+
+  500:
+    description: Internal system fault.
+    body:
+      application/json:
+        type: common.ErrorResponse
+        example: !include examples/errors/error-500-validation.json
+
+  503:
+    description: Source or target system unavailable.
+    body:
+      application/json:
+        type: common.ErrorResponse
+        example: !include examples/errors/error-503-validation.json
+  504:
+    description: Source or target system unavailable.
+    body:
+      application/json:
+        type: common.ErrorResponse
+        example: !include examples/errors/error-504-validation.json

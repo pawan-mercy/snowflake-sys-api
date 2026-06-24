@@ -1,0 +1,41 @@
+{
+  "status": {
+    "code": "VALIDATION_ERROR",
+    "httpStatus": 400,
+    "message": "Invalid request parameters for PAY-001 Snowflake System API"
+  },
+  "meta": {
+    "correlationId": "43c8c1aa-0be6-4e88-92e3-57fdf5e1d777",
+    "interfaceId": "PAY-001",
+    "runId": "PAY001-VAL-20260501-001",
+    "businessContext": "Daily validation request",
+    "dateTimeStamp": "2026-05-01T06:00:00+08:00",
+    "originatingSystem": "MuleSoft",
+    "targetSystem": "Snowflake",
+    "requestingAPI": "pay001-snowflake-sys-api/GET /timesheets/validation",
+    "responseAPIorSystem": "APIKit",
+    "muleEnvironment": "UAT"
+  },
+  "error": {
+    "errorId": "ERR-PAY001-20260501-0400",
+    "interfaceId": "PAY-001",
+    "errorType": "DATA_VALIDATION",
+    "errorCode": "PAY001-REQ-400",
+    "errorMessage": "Required query parameter fromTimestamp is missing or invalid",
+    "failureStage": "REQUEST_VALIDATION",
+    "retryable": false,
+    "muleApplication": "pay001-snowflake-sys-api",
+    "flowName": "get-timesheets-validation-flow",
+    "sourceSystem": "MuleSoft",
+    "targetSystem": "Snowflake",
+    "additionalDetails": "Provide fromTimestamp and toTimestamp in ISO-8601 format.",
+    "validationErrors": [
+      {
+        "field": "fromTimestamp",
+        "value": "",
+        "rule": "MANDATORY_QUERY_PARAMETER",
+        "message": "fromTimestamp is required for daily validation fetch"
+      }
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+# Example only. Do not commit real secrets.
+snowflake:
+  key:
+    password: "![bv7LJB0mYUzGkcOF5SX4JFhD2AqfN/zERIdYetZcvoo=]"

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <sub-flow name="common-init" doc:id="28db08a8-ffdd-4401-83b4-0bbd62be91fb">
+        <set-variable variableName="correlationId" value="#[attributes.headers.'x-correlation-id' default correlationId default uuid()]"/>
+		<set-variable value="PAY-001" doc:name="Set Interface ID" doc:id="887d0d13-9e60-4063-a105-b1b747a4c0c4" variableName="interfaceId" />
+		<set-variable value="#[(p('mule.env') default 'DEV') as String]" doc:name="Set Mule Environment" doc:id="b46fbf52-1035-40ba-9572-97d036fc877c" variableName="muleEnvironment" />
+    
+</sub-flow>
+</mule>

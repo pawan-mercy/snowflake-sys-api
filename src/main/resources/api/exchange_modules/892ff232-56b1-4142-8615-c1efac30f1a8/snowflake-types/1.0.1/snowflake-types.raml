@@ -1,0 +1,265 @@
+#%RAML 1.0 Library
+
+uses:
+  common: ../../common-types/1.0.0/common-types.raml
+
+types:
+
+  HealthData:
+    type: object
+    additionalProperties: false
+    properties:
+      apiName:
+        type: string
+        required: true
+        example: "pay001-snowflake-sys-api"
+      apiStatus:
+        type: string
+        required: true
+        enum: [AVAILABLE, DEGRADED, UNAVAILABLE]
+        example: "AVAILABLE"
+      version:
+        type: string
+        required: true
+        example: "v1"
+
+  HealthResponse:
+    type: object
+    additionalProperties: false
+    properties:
+      status:
+        type: common.Status
+        required: true
+      meta:
+        type: common.Meta
+        required: true
+      data:
+        type: HealthData
+        required: true
+      
+  VisitsControl:
+    type: object
+    additionalProperties: false
+    properties:
+      sourceName:
+        type: string
+        required: true
+        example: "SANDWAI"
+
+      endpoint:
+        type: string
+        required: true
+        example: "visits"
+
+      deltaKey:
+        type: string
+        required: true
+        example: "lastupdated"
+
+      deltaValue:
+        type: datetime
+        format: rfc3339
+        required: true
+        example: "2026-05-26T00:00:00.000Z"
+
+      lastRunId:
+        type: string
+        required: false
+        example: "PAY-001-VISITS-202605260100"
+
+      lastRunStatus:
+        type: string
+        required: true
+        enum: [PENDING, SUCCESS, FAILED]
+        example: "SUCCESS"
+
+      isPending:
+        type: boolean
+        required: true
+        example: false
+
+      lastRunRows:
+        type: integer
+        required: false
+        example: 1200
+
+      lastRunTimeUtc:
+        type: datetime
+        format: rfc3339
+        required: false
+        example: "2026-05-26T01:00:00.000Z"
+
+  VisitsControlResponse:
+    type: object
+    additionalProperties: false
+    properties:
+      status:
+        type: common.Status
+        required: true
+      meta:
+        type: common.Meta
+        required: true
+      data:
+        type: VisitsControl
+        required: true
+
+
+  VisitsQuery:
+    type: object
+    additionalProperties: false
+    properties:
+      fromLastUpdated:
+        type: datetime
+        format: rfc3339
+        required: true
+        example: "2026-05-26T00:00:00Z"
+
+      toLastUpdated:
+        type: datetime
+        format: rfc3339
+        required: true
+        example: "2026-05-27T01:00:00Z"
+
+      limit:
+        type: integer
+        required: true
+        example: 1000
+
+
+  Visit:
+    type: object
+    additionalProperties: false
+    properties:
+
+      acceptDate:
+        type: date-only
+        required: false
+        example: "2026-05-26"
+
+      actualEnd:
+        type: datetime-only
+        required: false
+        example: "2026-05-26T16:00:00.000"
+
+      actualStart:
+        type: datetime-only
+        required: false
+        example: "2026-05-26T08:00:00.000"
+
+      cancelReason:
+        type: string
+        required: false
+        example: "Client cancelled"
+
+      clientRelatedTravel:
+        type: number
+        required: false
+        example: 0
+
+      employeeCustomId:
+        type: string
+        required: true
+        example: "55140"
+
+      employeeFirstName:
+        type: string
+        required: true
+        example: "John"
+
+      employeeId:
+        type: integer
+        required: true
+        example: 100123
+
+      employeeLastName:
+        type: string
+        required: true
+        example: "Smith"
+
+      eventPaidHours:
+        type: number
+        required: false
+        example: 8
+
+      eventTypeCustomId:
+        type: string
+        required: true
+        example: "VISIT"
+
+      lastUpdated:
+        type: datetime-only
+        required: true
+        example: "2026-05-26T20:00:00.000"
+
+      sourceRunId:
+        type: string
+        required: true
+        example: "SANDWAI-RUN-001"
+
+      scheduleEnd:
+        type: datetime-only
+        required: false
+        example: "2026-05-26T16:00:00.000"
+
+      scheduleId:
+        type: integer
+        required: true
+        example: 258429
+
+      scheduleStart:
+        type: datetime-only
+        required: false
+        example: "2026-05-26T08:00:00.000"
+
+      serviceName:
+        type: string
+        required: false
+        example: "Community Support"
+
+      status:
+        type: string
+        required: true
+        example: "COMPLETED"
+
+      travelDistance:
+        type: number
+        required: false
+        example: 12.5
+
+      travelDuration:
+        type: number
+        required: false
+        example: 25
+
+
+  VisitsResult:
+    type: object
+    additionalProperties: false
+    properties:
+      query:
+        type: VisitsQuery
+        required: true
+
+      rowCount:
+        type: integer
+        required: true
+        example: 1
+
+      visits:
+        type: Visit[]
+        required: true
+
+
+  VisitsResponse:
+    type: object
+    additionalProperties: false
+    properties:
+      status:
+        type: common.Status
+        required: true
+      meta:
+        type: common.Meta
+        required: true
+      data:
+        type: VisitsResult
+        required: true

@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>${orgId}</groupId>
+    <artifactId>snowflake-sys-api</artifactId>
+    <version>1.0.1</version>
+    <packaging>mule-application</packaging>
+
+    <name>snowflake-sys-api</name>
+    <description>snowflake-sys-api</description>
+
+    <properties>
+        <!-- Replace with the full 36-character Anypoint Org / Business Group UUID -->
+        <orgId>9d898fda-4a31-4576-9ef9-c26b2eb2c6aa</orgId>
+
+        <!-- Application details -->
+        <application.name>snowflake-sys-api</application.name>
+        <app.runtime>4.9.0</app.runtime>
+
+        <!-- CloudHub 2.0 shared space target for Asia Pacific Sydney -->
+        <cloudhub2.target>Cloudhub-AP-Southeast-2</cloudhub2.target>
+
+        <!-- Default environment; can be overridden from Maven command -->
+        <anypoint.environment>dev</anypoint.environment>
+        <mule.env>dev</mule.env>
+
+        <!-- Connected App credentials; pass values from Maven command or CI/CD secrets -->
+        <anypoint.connectedApp.clientId>${connectedAppClientId}</anypoint.connectedApp.clientId>
+        <anypoint.connectedApp.clientSecret>${connectedAppClientSecret}</anypoint.connectedApp.clientSecret>
+
+        <!-- Mule Maven Plugin -->
+        <mule.maven.plugin.version>4.5.3</mule.maven.plugin.version>
+
+        <!-- Mule connectors / modules -->
+        <mule.http.connector.version>1.11.1</mule.http.connector.version>
+        <munit.version>3.4.0</munit.version>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Exchange metadata -->
+        <tags>snowflake</tags>
+        <categories>[{"key":"Layer","value":["System API"]}]</categories>
+        <fields>[]</fields>
+    </properties>
+
+    <!-- Required for CloudHub 2.0 because the application is published to Exchange first -->
+    <distributionManagement>
+        <repository>
+            <id>anypoint-exchange-v3</id>
+            <name>Anypoint Exchange</name>
+            <url>https://maven.anypoint.mulesoft.com/api/v3/organizations/${orgId}/maven</url>
+            <layout>default</layout>
+        </repository>
+    </distributionManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.mule.tools.maven</groupId>
+                <artifactId>mule-maven-plugin</artifactId>
+                <version>${mule.maven.plugin.version}</version>
+                <extensions>true</extensions>
+
+                <configuration>
+                 <additionalPluginDependencies>
+            <plugin>
+                <groupId>com.mulesoft.connectors</groupId>
+                <artifactId>mule4-snowflake-connector</artifactId>
+                <additionalDependencies>
+                    <dependency>
+                        <groupId>net.snowflake</groupId>
+                        <artifactId>snowflake-jdbc</artifactId>
+                        <version>3.18.0</version>
+                    </dependency>
+                </additionalDependencies>
+            </plugin>
+        </additionalPluginDependencies>
+                    <cloudhub2Deployment>
+                        <uri>https://anypoint.mulesoft.com</uri>
+
+                        <provider>MC</provider>
+
+                        <!-- Anypoint environment name. Must match exactly in Runtime Manager. -->
+                        <environment>${anypoint.environment}</environment>
+
+                        <!-- CloudHub 2.0 target name, not region value and not target ID. -->
+                        <target>${cloudhub2.target}</target>
+
+                        <!-- App name shown in Runtime Manager -->
+                        <applicationName>${application.name}</applicationName>
+
+                        <!-- Mule runtime -->
+                        <muleVersion>${app.runtime}</muleVersion>
+                        <releaseChannel>LTS</releaseChannel>
+                        <javaVersion>17</javaVersion>
+
+                        <!-- Connected App authentication -->
+                        <connectedAppClientId>${anypoint.connectedApp.clientId}</connectedAppClientId>
+                        <connectedAppClientSecret>${anypoint.connectedApp.clientSecret}</connectedAppClientSecret>
+                        <connectedAppGrantType>client_credentials</connectedAppGrantType>
+
+                        <!-- Business Group / Org -->
+                        <businessGroupId>${orgId}</businessGroupId>
+
+                        <!-- CloudHub 2.0 sizing -->
+                        <replicas>1</replicas>
+                        <vCores>0.1</vCores>
+
+                        <!-- Optional app properties available at runtime -->
+                        <properties>
+                            <mule.env>${mule.env}</mule.env>
+                            <env>${mule.env}</env>
+                        </properties>
+
+                        <!-- Optional deployment settings -->
+                        <deploymentSettings>
+                            <updateStrategy>rolling</updateStrategy>
+                        </deploymentSettings>
+
+                        <skipDeploymentVerification>false</skipDeploymentVerification>
+                    </cloudhub2Deployment>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <!-- Required for http:listener and http:request namespaces -->
+        <dependency>
+            <groupId>org.mule.connectors</groupId>
+            <artifactId>mule-http-connector</artifactId>
+            <version>${mule.http.connector.version}</version>
+            <classifier>mule-plugin</classifier>
+        </dependency>
+
+        <!-- MUnit runner -->
+        <dependency>
+            <groupId>com.mulesoft.munit</groupId>
+            <artifactId>munit-runner</artifactId>
+            <version>${munit.version}</version>
+            <classifier>mule-plugin</classifier>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- MUnit tools -->
+        <dependency>
+            <groupId>com.mulesoft.munit</groupId>
+            <artifactId>munit-tools</artifactId>
+            <version>${munit.version}</version>
+            <classifier>mule-plugin</classifier>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mule.modules</groupId>
+            <artifactId>mule-apikit-module</artifactId>
+            <version>1.11.10</version>
+            <classifier>mule-plugin</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mulesoft.modules</groupId>
+            <artifactId>mule-secure-configuration-property-module</artifactId>
+            <version>1.2.7</version>
+            <classifier>mule-plugin</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mulesoft.connectors</groupId>
+            <artifactId>mule4-snowflake-connector</artifactId>
+            <version>1.4.0</version>
+            <classifier>mule-plugin</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>net.snowflake</groupId>
+            <artifactId>snowflake-jdbc</artifactId>
+            <version>3.18.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mule.connectors</groupId>
+            <artifactId>mule-db-connector</artifactId>
+            <version>1.14.17</version>
+            <classifier>mule-plugin</classifier>
+        </dependency>
+
+<dependency>
+    <groupId>9d898fda-4a31-4576-9ef9-c26b2eb2c6aa</groupId>
+    <artifactId>json-logger</artifactId>
+    <version>3.1.2</version>
+    <classifier>mule-plugin</classifier>
+</dependency>
+    </dependencies>
+
+    <repositories>
+        <repository>
+            <id>mulesoft-releases</id>
+            <name>MuleSoft Releases Repository</name>
+            <url>https://repository.mulesoft.org/releases/</url>
+            <layout>default</layout>
+        </repository>
+
+        <repository>
+            <id>anypoint-exchange-v3</id>
+            <name>Anypoint Exchange</name>
+            <url>https://maven.anypoint.mulesoft.com/api/v3/maven</url>
+            <layout>default</layout>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>mulesoft-releases</id>
+            <name>MuleSoft Releases Repository</name>
+            <url>https://repository.mulesoft.org/releases/</url>
+            <layout>default</layout>
+        </pluginRepository>
+    </pluginRepositories>
+
+</project>

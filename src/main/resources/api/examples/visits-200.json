@@ -1,0 +1,51 @@
+{
+  "status": {
+    "code": "SUCCESS",
+    "httpStatus": 200,
+    "message": "Visits retrieved successfully from Snowflake"
+  },
+  "meta": {
+    "correlationId": "9d72f3aa-7e10-4d5d-bcb4-1b32fa8d1012",
+    "interfaceId": "PAY-001",
+    "runId": "test123",
+    "businessContext": "Read-only Snowflake visits query for PAY-001",
+    "dateTimeStamp": "2026-05-27T01:00:00+10:00",
+    "originatingSystem": "MuleSoft",
+    "targetSystem": "Snowflake",
+    "requestingAPI": "pay001-snowflake-sys-api/GET /visits",
+    "responseAPIorSystem": "Snowflake",
+    "muleEnvironment": "DEV"
+  },
+  "data": {
+    "query": {
+      "fromLastUpdated": "2026-05-26T00:00:00Z",
+      "toLastUpdated": "2026-05-27T01:00:00Z",
+      "limit": 1000
+    },
+    "rowCount": 1,
+    "visits": [
+      {
+        "acceptDate": "2026-05-26",
+        "actualEnd": "2026-05-26T16:00:00.000",
+        "actualStart": "2026-05-26T08:00:00.000",
+        "cancelReason": "No Idea",
+        "clientRelatedTravel": 0,
+        "employeeCustomId": "55140",
+        "employeeFirstName": "John",
+        "employeeId": 100123,
+        "employeeLastName": "Smith",
+        "eventPaidHours": 8,
+        "eventTypeCustomId": "VISIT",
+        "lastUpdated": "2026-05-26T20:00:00.000",
+        "sourceRunId": "SANDWAI-RUN-001",
+        "scheduleEnd": "2026-05-26T16:00:00.000",
+        "scheduleId": 258429,
+        "scheduleStart": "2026-05-26T08:00:00.000",
+        "serviceName": "Community Support",
+        "status": "COMPLETED",
+        "travelDistance": 12,
+        "travelDuration": 33
+      }
+    ]
+  }
+}

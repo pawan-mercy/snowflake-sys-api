@@ -1,0 +1,30 @@
+{
+  "status": {
+    "code": "SUCCESS",
+    "httpStatus": 200,
+    "message": "Visits control row retrieved successfully from Snowflake"
+  },
+  "meta": {
+    "correlationId": "9d72f3aa-7e10-4d5d-bcb4-1b32fa8d1012",
+    "interfaceId": "PAY-001",
+    "runId": "test123",
+    "businessContext": "Read-only control status query for PAY-001 visits endpoint",
+    "dateTimeStamp": "2026-05-27T01:00:00+10:00",
+    "originatingSystem": "MuleSoft",
+    "targetSystem": "Snowflake",
+    "requestingAPI": "pay001-snowflake-sys-api/GET /control/visits",
+    "responseAPIorSystem": "Snowflake",
+    "muleEnvironment": "DEV"
+  },
+  "data": {
+    "sourceName": "SANDWAI",
+    "endpoint": "visits",
+    "deltaKey": "lastupdated",
+    "deltaValue": "2026-05-26T00:00:00.000Z",
+    "lastRunId": "PAY-001-VISITS-202605260100",
+    "lastRunStatus": "SUCCESS",
+    "isPending": false,
+    "lastRunRows": 1200,
+    "lastRunTimeUtc": "2026-05-26T01:00:00.000Z"
+  }
+}

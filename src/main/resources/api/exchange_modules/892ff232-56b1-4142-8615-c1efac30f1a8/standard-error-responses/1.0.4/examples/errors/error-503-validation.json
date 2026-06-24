@@ -1,0 +1,34 @@
+{
+  "status": {
+    "code": "ERROR",
+    "httpStatus": 503,
+    "message": "Snowflake source system is unavailable"
+  },
+  "meta": {
+    "correlationId": "7bbfcde1-31b7-49b2-a70d-4a9cb4211120",
+    "interfaceId": "PAY-001",
+    "runId": "PAY001-PAY-20260515-001",
+    "businessContext": "Fortnightly payroll fetch from Snowflake",
+    "dateTimeStamp": "2026-05-15T18:00:00+08:00",
+    "originatingSystem": "MuleSoft",
+    "targetSystem": "Snowflake",
+    "requestingAPI": "pay001-snowflake-sys-api/GET /timesheets/payroll",
+    "responseAPIorSystem": "Snowflake",
+    "muleEnvironment": "PROD"
+  },
+  "error": {
+    "errorId": "ERR-PAY001-20260515-0503",
+    "interfaceId": "PAY-001",
+    "errorType": "SOURCE_SYSTEM_FAULT",
+    "errorCode": "PAY001-SNOWFLAKE-503",
+    "errorMessage": "Unable to connect to Snowflake while retrieving fortnightly payroll records",
+    "failureStage": "SOURCE_CONNECTION",
+    "retryable": true,
+    "muleApplication": "pay001-snowflake-sys-api",
+    "flowName": "get-timesheets-payroll-flow",
+    "sourceSystem": "Snowflake",
+    "targetSystem": "MuleSoft",
+    "additionalDetails": "Check Snowflake account, warehouse status, database, schema, role, key-pair authentication and network access.",
+    "validationErrors": []
+  }
+}
