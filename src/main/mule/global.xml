@@ -3,7 +3,7 @@
 http://www.mulesoft.org/schema/mule/snowflake http://www.mulesoft.org/schema/mule/snowflake/current/mule-snowflake.xsd
 http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
 http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
-    <configuration-properties file="properties/config-dev.yaml" />
+    <configuration-properties file="properties/config-${mule.env}.yaml" />
     <http:listener-config name="http-listener-config">
         <http:listener-connection host="${http.host}" port="${http.port}" />
     </http:listener-config>
@@ -20,7 +20,7 @@ http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/m
                               file="secure-properties/secure-dev.yaml"
                               key="${secure.key}">
     </secure-properties:config>
-    <json-logger:config name="JSON_Logger_Config" doc:name="JSON Logger Config" doc:id="a072340d-7186-439c-964f-1fddfe115ce3" environment="${env}" />
+    <json-logger:config name="JSON_Logger_Config" doc:name="JSON Logger Config" doc:id="a072340d-7186-439c-964f-1fddfe115ce3" environment="${mule.env}" />
     
     
 </mule>

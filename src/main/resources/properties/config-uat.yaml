@@ -14,13 +14,13 @@ http:
 
 snowflake:
   account: "A8592326672571-MERCYCARE"
-  user: "SVC_UAT_INTEGRATION_USER"
-  db: "UAT_INTEGRATION"
+  user: "SVC_DEV_INTEGRATION_USER"
+  db: "DEV_INTEGRATION"
   schema: "SANDWAI"
-  warehouse: "UAT_INTEGRATION_WH"
-  role: "UAT_INTEGRATION_CONSUMER_ROLE"
+  warehouse: "DEV_INTEGRATION_WH"
+  role: "DEV_INTEGRATION_CONSUMER_ROLE"
   key:
-   path: "${app.home}/snowflakeKeys/rsa_key_${mule.env}.p8"
+   path: "${app.home}/snowflakeKeys/rsa_key_dev.p8"
   sys:
      fetch:
       limit: "10000"

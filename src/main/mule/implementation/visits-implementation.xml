@@ -41,11 +41,8 @@ http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/m
 
         <flow-ref doc:name="Set Initial Variable" doc:id="8573c45a-3c3b-4792-87a9-39bdf68bd541" name="common-init"/>
 
-        <logger level="INFO"
-                doc:name="Log Control Visits Request"
-                message="#['PAY-001 Snowflake System API | GET /control/visits | correlationId='&#10;                    ++ vars.correlationId]"/>
-
-        <snowflake:select doc:name="Select Visits Control Row"
+        <json-logger:logger doc:name="Log Control Visits Request" doc:id="7814e430-baca-4f89-baf3-820e9960eeb3" config-ref="JSON_Logger_Config" message='#["PAY-001 Snowflake System API | GET /control/visits |"]'/>
+		<snowflake:select doc:name="Select Visits Control Row"
                           config-ref="Snowflake_Config"
                           target="controlRows"
                           queryTimeout="30"
@@ -172,10 +169,13 @@ var row = vars.controlRows[0]
             </otherwise>
 
         </choice>
+		<json-logger:logger doc:name="Log Control Visits Response" doc:id="dc2ff0eb-7434-4b0f-8b82-1b0ea9ba9cd1" config-ref="JSON_Logger_Config" message="#['PAY-001 Snowflake System API | GET /control/visits completed |']">
+			<json-logger:content ><![CDATA[#[import modules::JSONLoggerModule output application/json ---
+{
+"httpStatus":vars.httpStatus as String
 
-        <logger level="INFO"
-                doc:name="Log Control Visits Response"
-                message="#['PAY-001 Snowflake System API | GET /control/visits completed | correlationId='&#10;                    ++ vars.correlationId&#10;                    ++ ' | httpStatus='&#10;                    ++ (vars.httpStatus as String)]"/>
+}]]]></json-logger:content>
+		</json-logger:logger>
 		<error-handler ref="pay001-snowflake-global-error-handler" />
 
     
@@ -199,16 +199,15 @@ var row = vars.controlRows[0]
 				<ee:set-variable variableName="actualStart" ><![CDATA[attributes.queryParams.actualStart default null]]></ee:set-variable>
 				<ee:set-variable variableName="actualEnd" ><![CDATA[attributes.queryParams.actualEnd default null]]></ee:set-variable>
 				<ee:set-variable variableName="limitVal" ><![CDATA[attributes.queryParams.limitVal default 1000]]></ee:set-variable>
+				<ee:set-variable variableName="scheduleList" ><![CDATA[attributes.queryParams.scheduleList default null]]></ee:set-variable>
 			
 </ee:variables>
 		</ee:transform>
-		<logger level="INFO"
-                doc:name="Log Visits Request"
-                message="#['PAY-001 Snowflake System API | GET /visits | correlationId='&#10;                    ++ vars.correlationId&#10;                    ++ ' | fromLastUpdated='&#10;                    ++ ((vars.fromLastUpdated default '') as String)&#10;                    ++ ' | toLastUpdated='&#10;                    ++ ((vars.toLastUpdated default '') as String)&#10;                    ++ ' | limit='&#10;                    ++ ((vars.limit default '') as String )]"/>
 
-        <choice doc:name="Validate Visits Query Parameters">
+        <json-logger:logger doc:name="Logger" doc:id="cc76d179-03cd-4c55-bddd-4c020af788d4" config-ref="JSON_Logger_Config" message='#["PAY-001 Snowflake System API | GET /visits "]'/>
+		<choice doc:name="Validate Visits Query Parameters">
 
-            <when expression="#[(isBlank(vars.fromLastUpdated) and isBlank(vars.toLastUpdated)) and&#10;(isBlank(vars.actualStart) and isBlank(vars.actualEnd))]">
+            <when expression="#[(isBlank(vars.fromLastUpdated) and isBlank(vars.toLastUpdated)) and&#10;(isBlank(vars.actualStart) and isBlank(vars.actualEnd)) and (isBlank(vars.scheduleList))]">
 
                 <set-variable variableName="httpStatus"
                               value="400"
@@ -273,7 +272,7 @@ output application/json
 
             </when>
 
-            <when expression="#[(not isBlank(vars.fromLastUpdated) and not isBlank(vars.toLastUpdated))&#10;and&#10;(isBlank(vars.actualStart) and isBlank(vars.actualEnd))]">
+            <when expression='#[((vars.fromLastUpdated default "") != "" or (vars.toLastUpdated default "") != "")&#10;and (vars.actualStart default "") == ""&#10;and (vars.actualEnd default "") == ""]'>
 				<snowflake:select doc:name="Select Visits" doc:id="50654244-614d-4afa-98bd-ddd7bc801f4b" config-ref="Snowflake_Config" queryTimeout="120" fetchSize="500" target="visitsRows" >
 					<snowflake:sql ><![CDATA[
                         SELECT
@@ -295,6 +294,7 @@ output application/json
                             SCHEDULE_ID,
                             SCHEDULE_START,
                             SERVICE_NAME,
+                            SERVICE_CUSTOM_ID
                             STATUS,
                             TRAVEL_DISTANCE,
                             TRAVEL_DURATION
@@ -305,10 +305,12 @@ output application/json
   ) = 1
   AND LAST_UPDATED > TRY_TO_TIMESTAMP_NTZ(:fromLastUpdated)
   AND LAST_UPDATED <= TRY_TO_TIMESTAMP_NTZ(:toLastUpdated)
+  limit (:limitVal)
                     ]]></snowflake:sql>
 					<snowflake:input-parameters ><![CDATA[#[{
                         fromLastUpdated: vars.fromLastUpdated,
-                        toLastUpdated: vars.toLastUpdated
+                        toLastUpdated: vars.toLastUpdated,
+                        limitVal : vars.limitVal
                     }]]]></snowflake:input-parameters>
 				</snowflake:select>
 				<set-variable value="200" doc:name="Set HTTP Status 20" doc:id="7ab9b988-c518-44e9-b552-aa41af1ce7a9" variableName="httpStatus" />
@@ -362,6 +364,7 @@ var rows = vars.visitsRows default []
       scheduleStart: row.SCHEDULE_START default null,
       serviceName: row.SERVICE_NAME default null,
       status: row.STATUS,
+      serviceCustomId: row.SERVICE_CUSTOM_ID default null,
       travelDistance: row.TRAVEL_DISTANCE default null,
       travelDuration: row.TRAVEL_DURATION default null
     })
@@ -371,7 +374,7 @@ var rows = vars.visitsRows default []
 					</ee:message>
 				</ee:transform>
 			</when>
-			<when expression="#[(not isBlank(vars.actualStart) and not isBlank(vars.actualEnd))]">
+			<when expression='#[( (vars.actualStart default "") != "") or ((vars.actualEnd default "") != "")]'>
 				<snowflake:select doc:name="Select Visits" config-ref="Snowflake_Config" target="visitsRows" queryTimeout="120" fetchSize="500">
 
                     <snowflake:sql><![CDATA[
@@ -394,6 +397,7 @@ var rows = vars.visitsRows default []
                             SCHEDULE_ID,
                             SCHEDULE_START,
                             SERVICE_NAME,
+                            SERVICE_CUSTOM_ID
                             STATUS,
                             TRAVEL_DISTANCE,
                             TRAVEL_DURATION
@@ -404,11 +408,13 @@ var rows = vars.visitsRows default []
   ) = 1
   AND ACTUAL_START >= TRY_TO_TIMESTAMP_NTZ(:actualStart)
   AND ACTUAL_END <= TRY_TO_TIMESTAMP_NTZ(:actualEnd)
+  limit (:limitVal)
                     ]]></snowflake:sql>
 
                     <snowflake:input-parameters><![CDATA[#[{
                         actualStart: vars.actualStart ,
-                        actualEnd: vars.actualEnd        }]]]></snowflake:input-parameters>
+                        actualEnd: vars.actualEnd ,
+                        limitVal : vars.limitVal       }]]]></snowflake:input-parameters>
 
                 </snowflake:select>
 				<set-variable variableName="httpStatus" value="200" doc:name="Set HTTP Status 200" />
@@ -461,6 +467,7 @@ var rows = vars.visitsRows default []
       scheduleId: row.SCHEDULE_ID,
       scheduleStart: row.SCHEDULE_START default null,
       serviceName: row.SERVICE_NAME default null,
+      serviceCustomId: row.SERVICE_CUSTOM_ID default null,
       status: row.STATUS,
       travelDistance: row.TRAVEL_DISTANCE default null,
       travelDuration: row.TRAVEL_DURATION default null
@@ -470,6 +477,105 @@ var rows = vars.visitsRows default []
 ]]></ee:set-payload>
                     </ee:message>
                 </ee:transform>
+			</when>
+			<when expression='#[((vars.scheduleList default "") != "")]'>
+				<snowflake:select doc:name="Select Visits" doc:id="93cdeb40-19fa-40cf-819e-82ee3f94bec8" config-ref="Snowflake_Config" queryTimeout="120" fetchSize="500" target="visitsRows" >
+					<snowflake:sql ><![CDATA[SELECT
+                        	SCHEDULE_ID,
+                            ACCEPT_DATE,
+                            ACTUAL_END,
+                            ACTUAL_START,
+                            CANCEL_REASON,
+                            CLIENT_RELATED_TRAVEL,
+                            EMPLOYEE_CUSTOM_ID,
+                            EMPLOYEE_FIRST_NAME,
+                            EMPLOYEE_ID,
+                            EMPLOYEE_LAST_NAME,
+                            EVENT_PAID_HOURS,
+                            EVENT_TYPE_CUSTOM_ID,
+                            LAST_UPDATED,
+                            RUN_ID,
+                            SCHEDULE_END,
+                            SCHEDULE_START,
+                            SERVICE_NAME,
+                            SERVICE_CUSTOM_ID
+                            STATUS,
+                            TRAVEL_DISTANCE,
+                            TRAVEL_DURATION
+                        FROM DEV_INTEGRATION.SANDWAI.VISITS -- or FROM VISITS
+                        WHERE SCHEDULE_ID IN (
+  SELECT TRY_TO_NUMBER(TRIM(value))
+  FROM TABLE(SPLIT_TO_TABLE(:scheduleList, ','))
+)
+  QUALIFY ROW_NUMBER() OVER (
+      PARTITION BY SCHEDULE_ID
+      ORDER BY LAST_UPDATED DESC NULLS LAST
+  ) = 1]]></snowflake:sql>
+					<snowflake:input-parameters ><![CDATA[#[{
+                        actualStart: vars.actualStart ,
+                        actualEnd: vars.actualEnd,
+                        scheduleList: vars.scheduleList        }]]]></snowflake:input-parameters>
+				</snowflake:select>
+				<set-variable value="200" doc:name="Set HTTP Status 20" doc:id="cb7ae00f-75ee-4c5d-89d8-2232b4e29ff4" variableName="httpStatus" />
+				<ee:transform doc:name="Map Visits Response" doc:id="a843a74d-5259-418b-bf32-2e012cf7b6e2" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var rows = vars.visitsRows default []
+---
+{
+  status: {
+    code: "SUCCESS",
+    httpStatus: 200,
+    message: "Visits retrieved successfully from Snowflake"
+  },
+  meta: {
+    correlationId: vars.correlationId,
+    interfaceId: vars.interfaceId,
+    runId: null,
+    businessContext: "Read-only Snowflake visits query for PAY-001",
+    dateTimeStamp: now(),
+    originatingSystem: "MuleSoft",
+    targetSystem: "Snowflake",
+    requestingAPI: "pay001-snowflake-sys-api/GET /visits",
+    responseAPIorSystem: "Snowflake",
+    muleEnvironment: vars.muleEnvironment
+  },
+  data: {
+    query: {
+      fromLastUpdated: vars.fromLastUpdated,
+      toLastUpdated: vars.toLastUpdated,
+      limit: vars.limit
+    },
+    rowCount: sizeOf(rows),
+    visits: rows map ((row) -> {
+      acceptDate: row.ACCEPT_DATE default null,
+      actualEnd: row.ACTUAL_END default null,
+      actualStart: row.ACTUAL_START default null,
+      cancelReason: row.CANCEL_REASON default null,
+      clientRelatedTravel: row.CLIENT_RELATED_TRAVEL default null,
+      employeeCustomId: row.EMPLOYEE_CUSTOM_ID,
+      employeeFirstName: row.EMPLOYEE_FIRST_NAME,
+      employeeId: row.EMPLOYEE_ID,
+      employeeLastName: row.EMPLOYEE_LAST_NAME,
+      eventPaidHours: row.EVENT_PAID_HOURS default null,
+      eventTypeCustomId: row.EVENT_TYPE_CUSTOM_ID,
+      lastUpdated: row.LAST_UPDATED,
+      sourceRunId: row.RUN_ID,
+      scheduleEnd: row.SCHEDULE_END default null,
+      scheduleId: row.SCHEDULE_ID,
+      scheduleStart: row.SCHEDULE_START default null,
+      serviceName: row.SERVICE_NAME default null,
+      serviceCustomId: row.SERVICE_CUSTOM_ID default null,
+      status: row.STATUS,
+      travelDistance: row.TRAVEL_DISTANCE default null,
+      travelDuration: row.TRAVEL_DURATION default null
+    })
+  }
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
 			</when>
 			<otherwise>
 				<logger level="INFO" doc:name="Logger" doc:id="1fad5472-f31d-4421-ba89-c4b4a26c20e8" message="Do Nothing."/>

@@ -20,7 +20,7 @@ snowflake:
   warehouse: "DEV_INTEGRATION_WH"
   role: "DEV_INTEGRATION_CONSUMER_ROLE"
   key:
-   path: "${app.home}/snowflakeKeys/rsa_key_${mule.env}.p8"
+   path: "${app.home}/snowflakeKeys/rsa_key_dev.p8"
   sys:
      fetch:
       limit: "10000"
